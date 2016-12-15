@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall
 LDFLAGS = -lusb-1.0 -lncurses
-SOURCES = ncurses_demo.c
+SOURCES = ncursesB.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = ncurses
 
@@ -12,7 +12,7 @@ all: $(TARGET)
 $(TARGET) : $(OBJECTS)
 	gcc $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-download: $(SOURCES)
+dwnld: $(SOURCES)
 	arm-linux-gcc $(CFLAGS) -o $(TARGET)2 $^ $(LDFLAGS)
 	sshpass -p '233' scp $(TARGET)2 root@10.0.0.42:/bin
 

@@ -19,30 +19,23 @@ GetMilli (void)
 }
 
 static void
-DrawBox(void)
+DrawBox(int x, int y)
 {
+	int step = 0;
 	// this is only to demonstrate the characters to build a box
 	// this code should be modified to draw a box of arbitrary size
-	mvaddch (2, 32, ACS_ULCORNER);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_URCORNER);
-	mvaddch (3, 32, ACS_VLINE);
-	mvaddch (3, 38, ACS_VLINE);
-	mvaddch (4, 32, ACS_VLINE);
-	mvaddch (4, 38, ACS_VLINE);
-	mvaddch (5, 32, ACS_VLINE);
-	mvaddch (5, 38, ACS_VLINE);
-	mvaddch (6, 32, ACS_LLCORNER);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_HLINE);
-	addch (ACS_LRCORNER);
+	mvaddch(y, x, ACS_ULCORNER);
+	for (; step < 5; step++) addch (ACS_HLINE);
+	addch(ACS_URCORNER);
+	for (step = 1; step < 4; step++)
+	{
+	mvaddch(step + y, x, ACS_VLINE);
+	mvaddch(step + y, x + 6, ACS_VLINE);
+	}
+	mvprintw(y + 2, x + 3, "+");
+	mvaddch(y + 4, x, ACS_LLCORNER);
+	for (step = 0; step < 5; step++) addch (ACS_HLINE);
+	addch(ACS_LRCORNER);
 }
 		
 static void
@@ -86,10 +79,29 @@ GetSetTime(void)
 		result);
 }
 
-int getxpad(libusb_device_handle* h, int& transferred)
+static void stick(short sx, short sy, int cx, int cy, char* ch)
 {
+	int x = -1;
+	for (; x < 2; x++)
+		mvprintw(cy + x, cx - 2, "     ");
+	
+	mvprintw(cy - sy / 16385, cx + sx / 16383, ch);	
+}
+
+static void trigger(char vcalue, int cx, int cy)
+{
+	int y = cy;
+	for (; y > cy - 4; y--)
+		mvprintw(y, cx, "  ");
+	for (y = cy - 1; y > cy - vcalue / 63; y--)
+		mvprintw(y, cx, "++");	
+}
+
+int getxpad(libusb_device_handle* h)
+{
+	int transferred;
 	unsigned char data[32];
-	error = libusb_interrupt_transfer(h, 0x81, data, sizeof data, &transferred, 0);
+	int error = libusb_interrupt_transfer(h, 0x81, data, sizeof data, &transferred, 0);
 	if (error != 0) return (error);
 	int i = 0;
 	for (; i < transferred; i++)
@@ -99,21 +111,88 @@ int getxpad(libusb_device_handle* h, int& transferred)
 		else { mvprintw(0, 0, "%02X", data[i]); continue; }
 		printw("%02X", data[i]);				
 	}
+	///============================================
+	///	Up Down Left Reft
+	///============================================
+	int x = 53, y = 5;
+	move(y - 1, x);
+	(data[2] & 0x01) > 0 ? printw("^") : printw(".");
+	move(y, x - 2);
+	(data[2] & 0x04) > 0 ? printw("<   ") : printw(".   ");
+	(data[2] & 0x08) > 0 ? printw(">") : printw(".");
+	move(y + 1, x);
+	(data[2] & 0x02) > 0 ? printw("v") : printw(".");	
+	///============================================
+	/// Centre 3 buttons
+	///============================================
+	x += 4;
+	move(y, x);
+	(data[2] & 0x20) > 0 ? printw("Bk ") : printw(".. ");
+	(data[3] & 0x04) > 0 ? printw("Xb ") : printw(".. ");
+	(data[2] & 0x10) > 0 ? printw("St") : printw("..");
+	///============================================
+	/// XYAB
+	///============================================
+	x += 11;
+	move(y - 1, x);
+	(data[3] & 0x80) > 0 ? printw("Y") : printw(".");
+	move(y, x - 2);
+	(data[3] & 0x40) > 0 ? printw("X   ") : printw(".   ");
+	(data[3] & 0x20) > 0 ? printw("B") : printw(".");
+	move(y + 1, x);
+	(data[3] & 0x10) > 0 ? printw("A") : printw(".");
+	///============================================
+	/// L1 R1
+	///============================================
+	move(3, 66);
+	(data[3] & 0x02) > 0 ? printw("R1") : printw("..");
+	move(3, 54);
+	(data[3] & 0x01) > 0 ? printw("L1") : printw("..");	
+	///============================================
+	/// triggers
+	///============================================
+	trigger(data[4], 52, 3);
+	move(3, 52);
+	data[4] > 0 ? printw("L2") : printw("..");
+	trigger(data[5], 68, 3);
+	move(3, 68);
+	data[5] > 0 ? printw("R2") : printw("..");
+	///============================================
+	/// sticks
+	///============================================
+	char* lc; char* rc;
+	rc = (data[2] & 0x80) > 0 ? "@" : "+";
+	lc = (data[2] & 0x40) > 0 ? "@" : "+";
+	short lx, ly;
+	lx = data[6];
+	lx |= (data[7] << 8);
+	ly = data[8];
+	ly |= (data[9] << 8);
+	stick(lx, ly, 54, 9, lc);	
+	short rx, ry;
+	rx = data[10];
+	rx |= (data[11] << 8);
+	ry = data[12];
+	ry |= (data[13] << 8);
+	stick(rx, ry, 67, 9, rc);
+	return 0;
 	//printf(" ");
 }
 
-int led(int n)
+int led(libusb_device_handle* h, int n)
 {
+	int transferred;
 	unsigned char data[] = { 1, 3, (unsigned char)n };	
 	int error = libusb_interrupt_transfer(h, 0x02, data, sizeof data, &transferred, 0);	
 	return error;
 }
 
-int rumbler(int n)
+int rumbler(libusb_device_handle* h, int n)
 {
+	int transferred;
 	unsigned char b = ((unsigned char)n << 4);
 	unsigned char data[] = { 0, 8, 0, 0, b, 0, 0, 0 };	
-	error = libusb_interrupt_transfer(h, 0x02, data, sizeof data, &transferred, 0);	
+	int error = libusb_interrupt_transfer(h, 0x02, data, sizeof data, &transferred, 0);	
 	return error;
 }
 
@@ -121,7 +200,7 @@ int
 main(void)
 {
 	libusb_device_handle *h;
-	int error, transferred;
+	int error;
 
 	int k = libusb_init(NULL);//233
 	if (k != 0) printf("%d\n", k);
@@ -136,16 +215,18 @@ main(void)
     int     ch;
     unsigned int     i = 0;
     char    x[] = "|/-\\";
-
+	
     initscr();              /* Start curses mode        */
     raw();                  /* Line buffering disabled  */
     nodelay(stdscr, TRUE);  /* getch() returns immediately      */
     noecho();               /* no cursor */
     curs_set(0);			/* no cursor */
 
-	DrawBox();
+	DrawBox(51, 7);	
+	DrawBox(64, 7);
 	GetSetTime();
     mvprintw(3,5,"press a key ('q' to quit)");
+    mvprintw(4,5,"%d", LIBUSB_TRANSFER_ERROR);
     
     ch = getch();           /* If raw() hadn't been called
                              * we have to press 'enter' before it
@@ -165,7 +246,7 @@ main(void)
                 i = 0;
             }
             mvprintw(7,11,"%c %12lld", x[i], GetMilli());
-			getxpad();
+			getxpad(h);
         }
 		/**
 		 * Set the LED
@@ -174,15 +255,15 @@ main(void)
         {
             // show pressed key
             //mvprintw(5,13,"%c (%02x)     ", ch, ch);
-			if (--v_led < 0) v_led = 13;
-			error = led(v_led);
+			if (--v_led < 0) v_led = 12;
+			error = led(h, v_led);
         }
 		else if (ch == 's')
         {
             // show pressed key
             //mvprintw(5,13,"%c (%02x)     ", ch, ch);
-			if (++v_led > 13) v_led = 0;
-			error = led(v_led);
+			if (++v_led > 12) v_led = 0;
+			error = led(h, v_led);
         }
 		/**
 		 * Set the rumbler
@@ -192,16 +273,16 @@ main(void)
             // show pressed key
             //mvprintw(5,13,"%c (%02x)     ", ch, ch);
 			if (--v_rumbler < 0) v_rumbler = 15;
-			error = rumbler(v_rumbler);
+			error = rumbler(h, v_rumbler);
         }
 		else if (ch == 'x')
         {
             // show pressed key
             //mvprintw(5,13,"%c (%02x)     ", ch, ch);
 			if (++v_rumbler > 15) v_rumbler = 0;
-			error = rumbler(v_rumbler);
+			error = rumbler(h, v_rumbler);
         }
-		if (error != 0) 
+		if (error > 0) 
 		{
 			endwin();
 			fprintf(stderr, "Transfer failed: %d\n", error);
