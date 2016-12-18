@@ -221,6 +221,35 @@ main(void)
     nodelay(stdscr, TRUE);  /* getch() returns immediately      */
     noecho();               /* no cursor */
     curs_set(0);			/* no cursor */
+    
+    start_color();
+    init_pair(1, COLOR_RED, COLOR_BLACK);
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(4, COLOR_BLUE, COLOR_BLACK);
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(6, COLOR_CYAN, COLOR_BLACK);
+    
+    attron(COLOR_PAIR(1));
+    mvprintw(14, 5, "This ");
+    attroff(COLOR_PAIR(1));
+    attron(COLOR_PAIR(3));
+    printw("is ");
+    attroff(COLOR_PAIR(3));
+    attron(COLOR_PAIR(2));
+    printw("a ");
+    attroff(COLOR_PAIR(2));
+    attron(COLOR_PAIR(6));
+    printw("color");
+    attroff(COLOR_PAIR(6));
+    attron(COLOR_PAIR(4));
+    printw("ful ");
+    attroff(COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("string");
+    attroff(COLOR_PAIR(5));
+    mvprintw(15, 5, "Press 'a' and 's' to change the LED");
+    mvprintw(16, 5, "Press 'z' and 'x' to change the rumbler");
 
 	DrawBox(51, 7);	
 	DrawBox(64, 7);
