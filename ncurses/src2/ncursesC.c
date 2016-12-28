@@ -32,45 +32,42 @@ typedef enum
     DIR_LEFT,
     DIR_RIGHT
 } DIR_t;
-
-EVENT_t getEvent(libusb_device_handle *h, unsigned char* data)
+//libusb_device_handle *h, unsigned char* data
+EVENT_t getEvent()
 {
-    ev = EVENT_NONE;
-    ch = getch();
+    EVENT_t ev = EVENT_NONE;
+    char ch = getch();
+    
     switch (ch)
     { 
-        case 'q':
+        case 113:
             ev = EVENT_EXIT;
-        case 'w':
+            break;
+        case 119:
             ev = EVENT_UP;
-        case 'a':
+            break;
+        case 97:
             ev = EVENT_LEFT;
-        case 's':
+            break;
+        case 115:
             ev = EVENT_DOWN;
-        case 'd':
+            break;
+        case 100:
             ev = EVENT_RIGHT;
-        case ' ':
+            break;
+        case 32:
             ev = EVENT_START;
-    }
-    getxpad(h, data);
+            break;
+    }/*
     if (h != NULL)
     {
+        int result = getxpad(h, data);
         if ((data[3] & 0x04) > 0) ev = EVENT_START;
-    }
+    }*/
+    //mvprintw(4, 2, "%d", ch);
     return (ev);
 }
 
-static uint64_t
-GetMilli (void)
-{
-	struct timespec  ts;
-	uint64_t		milli;
-	
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	
-	milli = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
-	return (milli);
-}
 
 static void
 DrawBox()
@@ -91,7 +88,7 @@ DrawBox()
 	for (step = 1; step < 79; step++) addch (ACS_HLINE);
 	addch(ACS_LRCORNER);
 }
-		
+		/*
 static void
 GetSetTime(void)
 {
@@ -113,12 +110,12 @@ GetSetTime(void)
 		myTime.tm_sec);
 	
 	// modify the system time:
-	/*
+	/
 	myTime.tm_year++;
 	myTime.tm_hour += 2;
 	myRawTime = mktime(&myTime);	
 	result = stime(&myRawTime);
-	*/
+	*
 	
 	// check new system time:
 	time(&myRawTime2);
@@ -132,20 +129,20 @@ GetSetTime(void)
 		myTime2.tm_sec,
 		result);
 }
-
+*/
 static void clean()
 {
-    int x = 1;
+    //int x = 1;
     int y = 1;
 	for (; y < 23; y++)
     {
         move(y, 1);
         int x = 1;
-        for (; x < 79; y++)
+        for (; x < 79; x++)
             printw(" ");
     }
 }
-
+/*
 static void stick(short sx, short sy, int cx, int cy, char* ch)
 {
 	int x = -1;
@@ -163,6 +160,7 @@ static void trigger(char vcalue, int cx, int cy)
 	for (y = cy - 1; y > cy - vcalue / 63; y--)
 		mvprintw(y, cx, "++");	
 }
+*/
 
 int getxpad(libusb_device_handle* h, unsigned char* data)
 {
@@ -247,7 +245,7 @@ int getxpad(libusb_device_handle* h, unsigned char* data)
 	return 0;
 	//printf(" ");
 }
-
+/*
 int led(libusb_device_handle* h, int n)
 {
 	int transferred;
@@ -255,7 +253,7 @@ int led(libusb_device_handle* h, int n)
 	int error = libusb_interrupt_transfer(h, 0x02, data, sizeof data, &transferred, 0);	
 	return error;
 }
-
+* 
 int rumbler(libusb_device_handle* h, int n)
 {
 	int transferred;
@@ -265,11 +263,37 @@ int rumbler(libusb_device_handle* h, int n)
 	return error;
 }
 
-void connect()
+*/
+void connect(libusb_device_handle* h)
 {
     int k = libusb_init(NULL);//233
 	if (k != 0) printf("%d\n", k);
 	h = libusb_open_device_with_vid_pid(NULL, 0x045e, 0x028e);
+}
+
+void reset_item(short* snake, int* length, short* itempos)
+{
+    int itemx = 1 + rand() % 39;
+    int itemy = 1 + rand() % 22;
+    mvprintw(0, 15, "%02d, %02d", itemx, itemy); 
+    int i = 0;
+    for (; i < *length; i++)
+    {
+        int snakeX = ((snake[i] & 0xFF00) >> 8) & 0xFF;
+        int snakeY = snake[i] & 0x00FF;
+        if (snakeX == itemx)
+        {
+            itemx = 1 + rand() % 36;
+            i = 0;
+        }
+        if (snakeY == itemy)
+        {
+            itemy = 1 + rand() % 21;
+            i = 0;
+        }
+    } 
+    short ipos = itemx << 8 | itemy;
+    *itempos = ipos; 
 }
 
 void snake_init(short* snake)
@@ -279,110 +303,97 @@ void snake_init(short* snake)
     snake[2] = 771;
 }
 
-STATE_t snake_move(short* snake, int* length, DIR_t dir, short* itempos)
+void draw_snake(short* snake, int length, int itempos)
 {
-    short newdir = snake[0];
-    int l = *length;
-    switch (dir)
-    {
-        case DIR_UP:
-            if ((newdir & 0x0001) == 0) return STATE_STOP;
-            newdir -= 1;
-        case DIR_DOWN:
-            if ((newdir & 0x001F) == 23) return STATE_STOP;
-            newdir += 1;
-        case DIR_LEFT:
-            if ((newdir & 0x0100) == 0) return STATE_STOP;
-            newdir -= 256;
-        case DIR_RIGHT:
-            if ((newdir & 0x1F00) == 6656) return STATE_STOP;
-            newdir += 256;
-    }
-    if (newdir == snake[1]) return STATE_ACTIVE;
-    if (newdir == *itempos)
-    {
-        snake_eat(snake, length);
-        return STATE_ACTIVE;
-    }
-    int i = 0;
-    for (; i < l; i++)
-    {
-        if (newdir == snake[i]) return STATE_STOP;
-    }
-    for (; i > 1; i--)
-    {
-        snake[i] = snake[i - 1];
-    }
-    snake[0] = newdir;
-    return STATE_ACTIVE;
-}
-
-void snake_eat(short* snake, int* length, short* itempos)
-{
-    *length++;
-    int i = *length;
-    for (; i > 1; i--)
-    {
-        snake[i] = snake[i - 1];
-    }
-    snake[0] = *itempos;
-    reset_item(snake, length, itempos)
-}
-
-void draw_snake(short* snake, int length)
-{
-    clean();
+	clean();
     int i = 0;
     for (; i < length; i++)
     {
         int snakeX = ((snake[i] & 0xFF00) >> 8) & 0xFF;
         int snakeY = snake[i] & 0x00FF;
-        mvaddch(snakeY, snakeX * 3 - 1, "ACS_BLOCK");
-        addch("ACS_BLOCK");
-        addch("ACS_BLOCK");
+        if (i == 0) {mvprintw(1, 72, "%04x", snake[i]);
+         mvprintw(1, 62, "%d, %d", snakeX, snakeY);} 
+        mvaddch(snakeY, snakeX * 2 - 1, ACS_BLOCK);
+        addch(ACS_BLOCK);
     }
+    int itemX = ((itempos & 0xFF00) >> 8) & 0xFF;
+    int itemY = itempos & 0x00FF;
+    mvprintw(itemY, itemX * 2 - 1, "$$");    
+    mvprintw(1, 2, "%d", length);
 }
 
-void reset_item(short* snake, int* length, short* itempos)
+void snake_eat(short* snake, int* length, short* itempos)
 {
-    int itemx = 1 + rand() % 26;
-    int itemy = 1 + rand() % 23;
+    (*length)++;
+    int i = *length;
+    for (; i > 0; i--)
+    {
+        snake[i] = snake[i - 1];
+    }
+    snake[0] = *itempos;
+    reset_item(snake, length, itempos);
+    draw_snake(snake, *length, *itempos);
+}
+
+STATE_t snake_move(short* snake, int* length, DIR_t dir, short* itempos)
+{
+    short newdir = snake[0];
+    switch (dir)
+    {
+        case DIR_UP:
+            if ((newdir & 0x001F) == 1) { mvprintw(1, 10, "up"); return STATE_STOP; }
+            newdir--;
+            break;
+        case DIR_DOWN:
+            if ((newdir & 0x001F) == 22) return STATE_STOP;
+            newdir++;
+            break;
+        case DIR_LEFT:
+            if ((newdir & 0x3F00) == 256) { mvprintw(1, 10, "left"); return STATE_STOP; }
+            newdir -= 256;
+            break;
+        case DIR_RIGHT:
+            if ((newdir & 0x3F00) == 9984) return STATE_STOP;
+            newdir += 256;
+            break;
+    }
+    if (newdir == snake[1]) return STATE_ACTIVE;
+    if (newdir == *itempos)
+    {
+        snake_eat(snake, length, itempos);
+        return STATE_ACTIVE;
+    }
     int i = 0;
     for (; i < *length; i++)
     {
-        int snakeX = ((snake[i] & 0xFF00) >> 8) & 0xFF;
-        int snakeY = snake[i] & 0x00FF;
-        if (snakeX == itemx)
-        {
-            itemx = 1 + rand() % 26;
-            i = 0;
-        }
-        if (snakeY == itemy)
-        {
-            itemy = 1 + rand() % 23;
-            i = 0;
-        }
+        if (newdir == snake[i]) { mvprintw(1, 10, "self %04x %04x %d", newdir, snake[i], i); return STATE_STOP; }
     }
-    short ipos = itemx << 8 + itemy;
-    *itempos = ipos;    
-    mvprintw(snakeY, snakeX * 3 - 1, "$$");
+    for (; i > 0; i--)
+    {
+        snake[i] = snake[i - 1];
+    }
+    snake[0] = newdir;
+    draw_snake(snake, *length, *itempos);
+    //mvprintw(1, 70, "%d", newdir);
+    return STATE_ACTIVE;
 }
 
 int 
 main(void)
 {
-	libusb_device_handle *h;
-	int error;
+	//libusb_device_handle *h;
+	//int error;
     STATE_t st = STATE_INITIAL;
+    EVENT_t ev = EVENT_NONE;
     
-    connect(h);
+    //connect(h);
 	
 	//int v_led = 0, v_rumbler = 0;
 	
-    int     ch;
-    unsigned int     i = 0;
-    char    x[] = "|/-\\";    
-	unsigned char data[32];
+    //int     ch;
+    //unsigned int     i = 0;
+    //char    x[] = "|/-\\";    
+	//unsigned char data[32];
 	
     initscr();              /* Start curses mode        */
     raw();                  /* Line buffering disabled  */
@@ -391,9 +402,11 @@ main(void)
     curs_set(0);			/* no cursor */
     DrawBox();
     mvprintw(2, 2, "Press start");
-    
+    DIR_t d;
     short snake[598];
+    short itempos = 3333;
     int length;
+						
     //snake = (short*) malloc(3 * sizeof(short));
     
     /*
@@ -432,39 +445,38 @@ main(void)
     mvprintw(3,5,"press a key ('q' to quit)");
     mvprintw(4,5,"%d", LIBUSB_TRANSFER_ERROR);
     
-    ch = getch();          /* If raw() hadn't been called
+    ch = getch();          / If raw() hadn't been called
                              * we have to press 'enter' before it
                              * gets to the program      
                              */
 
     while (true)
     {
-        ev = getEvent(h, data);
+        ev = getEvent();
         switch (st)
         {
-            case STATE_INITIAL, STATE_STOP:
-                if (h == NULL) connect(h);
-                if (st == STATE_STOP)
-                {
-                    mvprintw(2, 2, "You died! Score: %d", length);
-                    mvprintw(3, 2, "Press start");
-                }
+            case STATE_STOP:
+                mvprintw(2, 2, "You died! Score: %d", length);
+                mvprintw(3, 2, "Press start");
+            case STATE_INITIAL:
                 switch (ev)
                 {
                     case EVENT_START:
-                        snake_init(snake);
+						DrawBox();
                         length = 3;
-                        draw_snake(snake, &length);
+                        snake_init(snake);
+						reset_item(snake, &length, &itempos);
+                        draw_snake(snake, length, itempos);
                         st = STATE_ACTIVE;
                         break;
                     case EVENT_EXIT:
                         endwin();
                         return (0);
                         break;
+                    default: break;
                 }  
                 break;
             case STATE_ACTIVE:
-                DIR_t d;
                 switch (ev)
                 {
                     case EVENT_UP:
@@ -479,12 +491,13 @@ main(void)
                     case EVENT_RIGHT:
                         d = DIR_RIGHT;
                         break;
+                    default: break;
                 }
-                if (ev != EVENT_NONE) st = snake_move(snake, &length, d, 0);
+                if (ev != EVENT_NONE) st = snake_move(snake, &length, d, &itempos);
                 break;
         }
-        ev = EVENT_NONE;
-        usleep(1000000);
+        usleep(9000);
+        //ev = EVENT_NONE;
     }
 
     /*
@@ -503,7 +516,7 @@ main(void)
             mvprintw(7,11,"%c %12lld", x[i], GetMilli());
 			getxpad(h);
         }
-		/**
+		/
 		 * Set the LED
 		 /
         else if (ch == 'a')
@@ -520,7 +533,7 @@ main(void)
 			if (++v_led > 12) v_led = 0;
 			error = led(h, v_led);
         }
-		/**
+		/
 		 * Set the rumbler
 		 /
         else if (ch == 'z')
@@ -545,7 +558,7 @@ main(void)
 		}		
     }
     
-    endwin();           /* End curses mode        */
+    endwin();           / End curses mode        */
 
     return (0);
 }

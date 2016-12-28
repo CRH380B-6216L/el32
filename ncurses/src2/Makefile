@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall
 LDFLAGS = -lusb-1.0 -lncurses
-SOURCES = ncursesB.c
+SOURCES = ncursesC.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = ncurses
 
