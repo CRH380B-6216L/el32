@@ -32,8 +32,8 @@ typedef enum
     DIR_LEFT,
     DIR_RIGHT
 } DIR_t;
-//libusb_device_handle *h, unsigned char* data
-EVENT_t getEvent()
+//
+EVENT_t getEvent(libusb_device_handle* h, unsigned char* data)
 {
     EVENT_t ev = EVENT_NONE;
     char ch = getch();
@@ -58,12 +58,18 @@ EVENT_t getEvent()
         case 32:
             ev = EVENT_START;
             break;
-    }/*
+    }
     if (h != NULL)
     {
-        int result = getxpad(h, data);
-        if ((data[3] & 0x04) > 0) ev = EVENT_START;
-    }*/
+        int error = getxpad(h, data);
+        if (error > 0) return ev;
+        if ((data[2] & 0x20) > 0) ev = EVENT_EXIT;
+        if ((data[2] & 0x01) > 0) ev = EVENT_UP;
+        if ((data[2] & 0x04) > 0) ev = EVENT_LEFT;
+        if ((data[2] & 0x08) > 0) ev = EVENT_RIGHT;
+        if ((data[2] & 0x02) > 0) ev = EVENT_DOWN;
+        if ((data[2] & 0x10) > 0) ev = EVENT_START;
+    }
     //mvprintw(4, 2, "%d", ch);
     return (ev);
 }
@@ -167,85 +173,9 @@ int getxpad(libusb_device_handle* h, unsigned char* data)
 	int transferred;
 	//unsigned char data[32];
 	int error = libusb_interrupt_transfer(h, 0x81, data, sizeof data, &transferred, 0);
-	if (error != 0) return (error);
-    /*
-	int i = 0;
-	for (; i < transferred; i++)
-	{
-		if (i > 14) break;
-		if (i != 0) printw(".");
-		else { mvprintw(0, 0, "%02X", data[i]); continue; }
-		printw("%02X", data[i]);				
-	}
-	///============================================
-	///	Up Down Left Reft
-	///============================================
-	int x = 53, y = 5;
-	move(y - 1, x);
-	(data[2] & 0x01) > 0 ? printw("^") : printw(".");
-	move(y, x - 2);
-	(data[2] & 0x04) > 0 ? printw("<   ") : printw(".   ");
-	(data[2] & 0x08) > 0 ? printw(">") : printw(".");
-	move(y + 1, x);
-	(data[2] & 0x02) > 0 ? printw("v") : printw(".");	
-	///============================================
-	/// Centre 3 buttons
-	///============================================
-	x += 4;
-	move(y, x);
-	(data[2] & 0x20) > 0 ? printw("Bk ") : printw(".. ");
-	(data[3] & 0x04) > 0 ? printw("Xb ") : printw(".. ");
-	(data[2] & 0x10) > 0 ? printw("St") : printw("..");
-	///============================================
-	/// XYAB
-	///============================================
-	x += 11;
-	move(y - 1, x);
-	(data[3] & 0x80) > 0 ? printw("Y") : printw(".");
-	move(y, x - 2);
-	(data[3] & 0x40) > 0 ? printw("X   ") : printw(".   ");
-	(data[3] & 0x20) > 0 ? printw("B") : printw(".");
-	move(y + 1, x);
-	(data[3] & 0x10) > 0 ? printw("A") : printw(".");
-	///============================================
-	/// L1 R1
-	///============================================
-	move(3, 66);
-	(data[3] & 0x02) > 0 ? printw("R1") : printw("..");
-	move(3, 54);
-	(data[3] & 0x01) > 0 ? printw("L1") : printw("..");	
-	///============================================
-	/// triggers
-	///============================================
-	trigger(data[4], 52, 3);
-	move(3, 52);
-	data[4] > 0 ? printw("L2") : printw("..");
-	trigger(data[5], 68, 3);
-	move(3, 68);
-	data[5] > 0 ? printw("R2") : printw("..");
-	///============================================
-	/// sticks
-	///============================================
-	char* lc; char* rc;
-	rc = (data[2] & 0x80) > 0 ? "@" : "+";
-	lc = (data[2] & 0x40) > 0 ? "@" : "+";
-	short lx, ly;
-	lx = data[6];
-	lx |= (data[7] << 8);
-	ly = data[8];
-	ly |= (data[9] << 8);
-	stick(lx, ly, 54, 9, lc);	
-	short rx, ry;
-	rx = data[10];
-	rx |= (data[11] << 8);
-	ry = data[12];
-	ry |= (data[13] << 8);
-	stick(rx, ry, 67, 9, rc);
-    */
-	return 0;
-	//printf(" ");
+	return (error);
 }
-/*
+
 int led(libusb_device_handle* h, int n)
 {
 	int transferred;
@@ -253,7 +183,7 @@ int led(libusb_device_handle* h, int n)
 	int error = libusb_interrupt_transfer(h, 0x02, data, sizeof data, &transferred, 0);	
 	return error;
 }
-* 
+
 int rumbler(libusb_device_handle* h, int n)
 {
 	int transferred;
@@ -263,7 +193,6 @@ int rumbler(libusb_device_handle* h, int n)
 	return error;
 }
 
-*/
 void connect(libusb_device_handle* h)
 {
     int k = libusb_init(NULL);//233
@@ -381,12 +310,17 @@ STATE_t snake_move(short* snake, int* length, DIR_t dir, short* itempos)
 int 
 main(void)
 {
-	//libusb_device_handle *h;
-	//int error;
+	libusb_device_handle *h = NULL;
+	int error = 0;
     STATE_t st = STATE_INITIAL;
     EVENT_t ev = EVENT_NONE;
     
-    //connect(h);
+    DIR_t d;
+    short snake[897];
+    short itempos = 3333;
+    int length;
+    
+    connect(h);
 	
 	//int v_led = 0, v_rumbler = 0;
 	
@@ -401,12 +335,12 @@ main(void)
     noecho();               /* no cursor */
     curs_set(0);			/* no cursor */
     DrawBox();
-    mvprintw(2, 2, "Press start");
-    DIR_t d;
-    short snake[598];
-    short itempos = 3333;
-    int length;
-						
+    mvprintw(2, 2, "SNAKE - Embedded Linux Assignment G");
+    mvprintw(3, 2, "===================================");
+    mvprintw(4, 2, "Use direction buttons on your gamepad");
+    mvprintw(5, 2, "You can go to the space where the score and position shows");
+    mvprintw(6, 2, "Connect your gamepad and press start");
+
     //snake = (short*) malloc(3 * sizeof(short));
     
     /*
@@ -452,13 +386,17 @@ main(void)
 
     while (true)
     {
-        ev = getEvent();
+        ev = getEvent(h, data);
         switch (st)
         {
             case STATE_STOP:
                 mvprintw(2, 2, "You died! Score: %d", length);
                 mvprintw(3, 2, "Press start");
+                if (h != NULL) 
+                    error = led(h, 10);
             case STATE_INITIAL:
+                if (h != NULL && st = STATE_INITIAL) 
+                    error = led(h, 1);
                 switch (ev)
                 {
                     case EVENT_START:
@@ -477,6 +415,8 @@ main(void)
                 }  
                 break;
             case STATE_ACTIVE:
+                if (h != NULL) 
+                    error = led(h, 0);
                 switch (ev)
                 {
                     case EVENT_UP:
@@ -493,8 +433,13 @@ main(void)
                         break;
                     default: break;
                 }
-                if (ev != EVENT_NONE) st = snake_move(snake, &length, d, &itempos);
+                if (ev <= 3) st = snake_move(snake, &length, d, &itempos);
                 break;
+        }
+        if (h == NULL)
+        {
+            mvprintw(21, 2, "WARNING: gamepad is not connected");
+            connect(h);
         }
         usleep(9000);
         //ev = EVENT_NONE;
@@ -524,14 +469,13 @@ main(void)
             // show pressed key
             //mvprintw(5,13,"%c (%02x)     ", ch, ch);
 			if (--v_led < 0) v_led = 12;
-			error = led(h, v_led);
         }
 		else if (ch == 's')
         {
             // show pressed key
             //mvprintw(5,13,"%c (%02x)     ", ch, ch);
 			if (++v_led > 12) v_led = 0;
-			error = led(h, v_led);
+			error = led(h, 10);
         }
 		/
 		 * Set the rumbler
