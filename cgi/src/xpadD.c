@@ -23,58 +23,7 @@ main(int argc, char *argv[])
 	
 	if (argc <= 1)
 	{		
-		//unsigned char data[32];
-		while (1)
-		{
-			unsigned char data[32];
-			error = libusb_interrupt_transfer(h, 0x81, data, sizeof data, &transferred, 0);
-			if (error != 0) 
-			{
-				fprintf(stderr, "Transfer failed: %d\n", error);
-				return (1);
-			}	
-			
-			//printf("transferred: %d\n", transferred);
-			int i = 0;
-			for (; i < transferred; i++)
-			{
-				if (i > 14) break;
-				if (i != 0) printf(".");
-				printf("%02X", data[i]);				
-			}
-			printf(" ");
-			(data[2] & 0x80) > 0 ? printf("R3") : printf("  ");
-			(data[2] & 0x40) > 0 ? printf("L3") : printf("  ");
-			(data[2] & 0x20) > 0 ? printf("Bk") : printf("  ");
-			(data[2] & 0x10) > 0 ? printf("St") : printf("  ");
-			(data[2] & 0x08) > 0 ? printf(">") : printf(" ");
-			(data[2] & 0x04) > 0 ? printf("<") : printf(" ");
-			(data[2] & 0x02) > 0 ? printf("v") : printf(" ");
-			(data[2] & 0x01) > 0 ? printf("^") : printf(" ");
-			(data[3] & 0x80) > 0 ? printf("Y") : printf(" ");
-			(data[3] & 0x40) > 0 ? printf("X") : printf(" ");
-			(data[3] & 0x20) > 0 ? printf("B") : printf(" ");
-			(data[3] & 0x10) > 0 ? printf("A") : printf(" ");
-			(data[3] & 0x04) > 0 ? printf("Xb") : printf("  ");
-			(data[3] & 0x02) > 0 ? printf("R1") : printf("  ");
-			(data[3] & 0x01) > 0 ? printf("L1") : printf("  ");			
-			data[4] > 0 ? printf("L2%02X", data[4]) : printf("    ");
-			data[5] > 0 ? printf("R2%02X", data[5]) : printf("    ");
-			short lx, ly;
-			lx = data[6];
-			lx |= (data[7] << 8);
-			ly = data[8];
-			ly |= (data[9] << 8);
-			printf(" Ls(%d,%d)", lx, ly);
-			short rx, ry;
-			rx = data[10];
-			rx |= (data[11] << 8);
-			ry = data[12];
-			ry |= (data[13] << 8);
-			printf(" Rs(%d,%d)", rx, ry);
-			printf("\n");
-			//printf("Hello, world! (try --help)\n");
-		}
+		
 	}
 	else
 	{

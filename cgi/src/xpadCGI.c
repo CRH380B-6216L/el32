@@ -4,29 +4,38 @@
 
 int main(int argc, char *argv[])
 {
-  const char* p;
-  char* buffer;
-  const char* delim = {"="};
+  char* p;
   char* s1;
-  char* s2;
+  int n = 0;
+  char result[12] = "xpadD2 ";
   printf("Content-Type: text/html\n\n");
-  printf("<html>\n<head>\n<title>CGI</title></head><body><h4>LED setting</h4><p>");
-  if ((p = getenv("QUERY_STRING")) != NULL && *p != '\0')
+  printf("<html>\n<head>\n<title>xpadCGI</title></head><body>");
+  p = getenv("QUERY_STRING");
+  //p = "rumbler=5";
+  if (p != NULL && *p != '\0')
   {
-    buffer = strtok(p, delim);
-    if (strcmp(buffer, "led") == 0) s1 = "-l";
-    if (strcmp(buffer, "rumbler") == 0) s1 = "-r";
-    buffer = strtok(NULL, delim);
-    s2 = buffer;
-    system("xpadD2 %s %s", s1, s2);
-  }  
+    if (strncmp(p, "led=", 4) == 0) 
+    { 
+		s1 = "-l"; 
+		sscanf(p, "led=%d", &n);
+    }
+    if (strncmp(p, "rumbler=", 8) == 0) 
+    { 
+		s1 = "-r"; 
+		sscanf(p, "rumbler=%d", &n);
+	}
+    sprintf(result, "xpadD2 %s %d", s1, n);
+    system((const char*)result);
+    printf("<p>%s</p>", result); 
+  } 
+  printf("<h4>LED setting</h4><p>");
   int i = 0;
   for (; i < 13; i++)
-    printf("<a href='?led=%d'>%d</a>", i);
+    printf(" <a href='?led=%d'>%d</a>", i, i);
   i = 0;
-  printf("</p><h4>LED setting</h4><p>&nbsp;");
-  for (; i < 15; i++)
-    printf("<a href='?rumbler=%d'>%d</a>&nbsp;", i);
+  printf("</p><h4>rumbler setting</h4><p>");
+  for (; i < 16; i++)
+    printf("<a href='?rumbler=%d'>%d</a>&nbsp;", i, i);
   printf("</p></body></html>");
   return (0);
 }

@@ -5,9 +5,9 @@ SOURCES = $(wildcard *.c)
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = xpadD
 
-.PHONY: all clean
+.PHONY: dwnld clean
 
-all: $(TARGET)
+all: dwnld
  
 $(TARGET) : $(OBJECTS)
 	gcc $(CFLAGS) -o $@ $^ $(LDFLAGS)
